@@ -1,0 +1,152 @@
+﻿@{
+    /**/
+
+    //ViewBag.Title = "Equipment Reading Grid";
+}
+
+<div ng-app="GridApp">
+    <h2>Equipment Reading</h2>
+    <table class="table table-bordered" ng-controller="gridCtrl">
+        <thead>
+            <tr>
+                <th>Unit</th>
+                <th ng-repeat="dep in $root.departments" id="header-{{ dep.ID }}">
+                    {{ dep.Name }}
+                </th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="item in $root.eqpreadings.Readings">
+                <td><input type="text" class="form-control" ng-model="item.Equipment.Name" ng-blur="changeEquipment($index)" /></td>
+                <td ng-repeat="r in item.DepReadings">
+                    <input class="form-control" style="width:100px;" min="0" type="number" ng-model="r.Reading" ng-blur="changeVentreading(r.ID)" id="ventreading-{{ r.ID }}" />
+                </td>
+                <td>
+                    <div class="dropdown">
+                        <button id="dLabel" type="button" data-toggle="dropdown" class="btn btn-default dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+                            <span class="glyphicon glyphicon-option-horizontal" aria-hidden="true"></span>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="dLabel">
+                            <li><a href="#" ng-click="removeEqpReading($index)">Remove</a></li>
+                        </ul>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td><button class="btn btn-default" ng-click="addEqpReading()" type="button"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span></button></td>
+                <td colspan="5"></td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td></td>
+                <td ng-repeat="dep in $root.eqpreadings.Departments">
+                    <span ng-class="{'danger' : dep.m_Item3}">
+                        {{ dep.m_Item2 }} / {{ dep.m_Item1.VentilationCapacity}}
+                    </span>
+                </td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+
+@section scripts{
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+    <script type="text/ng-template" id="readingcols">
+        <td ng-repeat=""></td>
+    </script>
+    <script>
+        var app = angular.module('GridApp', []);
+        app.service('masterService', function ($rootScope, $http) {
+
+            getDepartments = function () {
+                $http.get("api/department").then(function (response) {
+                    $rootScope.departments = response.data;
+                }).then(function (response) { });
+            };
+
+            getEqpReadings = function () {
+                $http.get("api/eqread").then(function (response) {
+                    $rootScope.eqpreadings = response.data;
+                    console.log($rootScope.eqpreadings);
+                }).then(function (response) { });
+            };
+
+
+            return {
+                getDepartments: getDepartments,
+                getEqpReadings: getEqpReadings
+            };
+
+        });
+
+        app.controller('gridCtrl', function ($scope, $rootScope, $http, masterService) {
+            masterService.getDepartments();
+            masterService.getEqpReadings();
+
+            $scope.addEqpReading = function () {
+                $http.get("api/eqread/0").then(function (response) {
+                    $rootScope.eqpreadings.Readings.push(response.data);
+                }).then(function (response) { });
+            };
+
+            $scope.removeEqpReading = function (index) {
+                if ($rootScope.eqpreadings.Readings[index].Equipment == "") {
+                    $rootScope.eqpreadings.Readings.splice(index, 1);
+                } else {
+                    $.ajax({
+                        url: "api/equipment/" + $rootScope.eqpreadings.Readings[index].Equipment.ID,
+                        method: 'DELETE',
+                        success: function (data, textStatus, xhr) {
+                            masterService.getEqpReadings();
+                        },
+                        error: function (xhr, textStatus, errorThrown) {
+                            console.log('Error in Operation');
+                        }
+                    });
+                }
+            }
+
+            $scope.changeVentreading = function (id) {
+                $.ajax({
+                    url: "api/ventreading/" + id,
+                    type: 'PUT',
+                    dataType: 'json',
+                    data: { "": $("#ventreading-" + id).val() },
+                    success: function (data, textStatus, xhr) {
+                        masterService.getEqpReadings();
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        console.log('Error in Operation');
+                    }
+                });
+            }
+
+            $scope.changeEquipment = function (index) {
+                //if equipment id is zero than new record have to be inserted other wise update existing record
+                if ($rootScope.eqpreadings.Readings[index].Equipment.ID == 0) {
+                    $.post("api/equipment", { "": $rootScope.eqpreadings.Readings[index].Equipment.Name }).then(function (response) {
+                        masterService.getEqpReadings();
+                    }).then(function (response) { });
+                } else {
+                    $.ajax({
+                        url: "api/equipment/" + $rootScope.eqpreadings.Readings[index].Equipment.ID,
+                        type: 'PUT',
+                        dataType: 'json',
+                        data: { "": $rootScope.eqpreadings.Readings[index].Equipment.Name },
+                        success: function (data, textStatus, xhr) {
+                            masterService.getEqpReadings();
+                        },
+                        error: function (xhr, textStatus, errorThrown) {
+                            console.log('Error in Operation');
+                        }
+                    });
+                }
+            };
+        });
+    </script>
+}
+
