@@ -15,16 +15,22 @@ namespace Ventrack.Controllers
         // GET api/<controller>
         public EquipmentReadingModel Get()
         {
+            // get the list of departments and readings from db so that we dont have to make more calls to db
             var deps = db.Departments.OrderBy(t => t.ID).ToList();
             var readings = db.VentReadings.ToList();
+
+            //this model will store everything thing to display on UI
             EquipmentReadingModel model = new EquipmentReadingModel();
+            //go through each equipment
             foreach (Equipment eqp in db.Equipments)
             {
                 EquipmentReading er = new EquipmentReading();
                 er.Equipment = eqp;
-                //var list = readings.Where(t => t.Equipment == er.Equipment).OrderBy(t => t.Department.ID);
+                
+                //loop through each department
                 foreach (var l in deps)
                 {
+                    //get reading particular to the department
                     var vr = readings.FirstOrDefault(t => t.Equipment.ID == er.Equipment.ID && t.Department.ID == l.ID);
                     DepReading dr = new DepReading() { ID = vr.ID, Dep = l, Reading = (vr != null) ? vr.Ventilation : 0 };
                     er.DepReadings.Add(dr);
@@ -32,6 +38,7 @@ namespace Ventrack.Controllers
                 model.Readings.Add(er);
             }
 
+            //get total reading for each department and check if current reading exceeds allowed ventilation limit
             foreach(Department d in deps)
             {
                 int currenttotalreading = readings.Where(t => t.Department.ID == d.ID && t.Status == ItemStatus.Active).Sum(t => t.Ventilation);
@@ -47,7 +54,7 @@ namespace Ventrack.Controllers
             var deps = db.Departments.OrderBy(t => t.ID).ToList();
             EquipmentReading er = new EquipmentReading();
             if(id == 0) {
-                
+                //add an empty Equipment reading to show on UI
                 er.Equipment = new Equipment() { ID = 0, Name = "", DateCreated = DateTime.UtcNow, Status = ItemStatus.Active };
                 foreach (var l in deps)
                 {
